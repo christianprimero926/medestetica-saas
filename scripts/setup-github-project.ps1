@@ -1,20 +1,12 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Crea el repositorio meta, el GitHub Project v2 y las issues de los 3 repos MedEstética.
-
-.DESCRIPTION
-  Lee repos.manifest.json y .github/project/tasks.json (sincronizado con Obsidian).
-  Requiere: GitHub CLI autenticado (`gh auth login`).
-
-.EXAMPLE
-  .\scripts\setup-github-project.ps1
-  .\scripts\setup-github-project.ps1 -DryRun
-  .\scripts\setup-github-project.ps1 -SkipRepoCreate
+  Crea repo meta, GitHub Project v2, milestones, labels e issues completas MedEstetica.
 #>
 param(
     [switch]$DryRun,
     [switch]$SkipRepoCreate,
+    [switch]$SkipIssues,
     [string]$Owner = "christianprimero926"
 )
 
@@ -28,23 +20,19 @@ function Get-GhExe {
         "$env:ProgramFiles\GitHub CLI\gh.exe",
         "$env:LOCALAPPDATA\Programs\GitHub CLI\gh.exe"
     ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique -First 1
-    if (-not $candidates) {
-        throw "GitHub CLI (gh) no encontrado. Instala con: winget install GitHub.cli"
-    }
+    if (-not $candidates) { throw "GitHub CLI (gh) no encontrado. Instala: winget install GitHub.cli" }
     return $candidates
 }
 
 function Invoke-Gh {
     param([string[]]$GhArgs)
-    $gh = Get-GhExe
     if ($DryRun) {
         Write-Host "[dry-run] gh $($GhArgs -join ' ')" -ForegroundColor DarkGray
         return $null
     }
+    $gh = Get-GhExe
     $output = & $gh @GhArgs 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "gh $($GhArgs -join ' ') failed: $output"
-    }
+    if ($LASTEXITCODE -ne 0) { throw "gh $($GhArgs -join ' ') failed: $output" }
     return ($output | Out-String).Trim()
 }
 
@@ -52,73 +40,121 @@ function Ensure-GhAuth {
     $gh = Get-GhExe
     & $gh auth status 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) {
-        throw @"
-No hay sesión en GitHub CLI.
-Ejecuta: gh auth login
-Luego vuelve a correr: .\scripts\setup-github-project.ps1
-"@
+        throw "No hay sesion en GitHub CLI. Ejecuta: gh auth login"
     }
 }
 
 function Ensure-Labels {
-    param(
-        [string]$Repo,
-        [string[]]$Labels
-    )
+    param([string]$Repo, [string[]]$Labels)
     foreach ($label in $Labels) {
         try {
-            Invoke-Gh @("label", "create", $label, "--repo", "$Owner/$Repo", "--force", "--color", "1D76DB") | Out-Null
+            $color = switch -Regex ($label) {
+                'status:resolved|done' { '0E8A16' }
+                'status:pending' { 'D93F0B' }
+                'status:optional' { 'FBCA04' }
+                'type:bugfix' { 'B60205' }
+                'type:improvement' { 'C5DEF5' }
+                'type:epic' { '5319E7' }
+                'priority:P0' { 'B60205' }
+                default { '1D76DB' }
+            }
+            Invoke-Gh @("label", "create", $label, "--repo", "$Owner/$Repo", "--force", "--color", $color) | Out-Null
         } catch {
             Write-Warning "Label $label en ${Repo}: $_"
         }
     }
 }
 
+function Ensure-Milestones {
+    param([string]$Repo, [string[]]$Titles)
+    foreach ($title in $Titles) {
+        try {
+            Invoke-Gh @("api", "repos/$Owner/$Repo/milestones", "-f", "title=$title", "-f", "state=open") | Out-Null
+        } catch {
+            Write-Warning "Milestone $title en ${Repo}: $_"
+        }
+    }
+}
+
+function Find-IssueByTitle {
+    param([string]$Repo, [string]$Title)
+    if ($DryRun) { return $null }
+    $q = [uri]::EscapeDataString("repo:$Owner/$Repo is:issue `"$Title`"")
+    $json = Invoke-Gh @("search", "issues", $q, "--json", "url,number,title", "--jq", ".items[0]")
+    if ($json -and $json -ne "null") { return ($json | ConvertFrom-Json) }
+    return $null
+}
+
 function New-ProjectIssue {
     param(
         [object]$Item,
-        [hashtable]$RepoMap
+        [hashtable]$RepoMap,
+        [hashtable]$IssueIndex
     )
     $repoName = $RepoMap[$Item.repo]
     if (-not $repoName) { throw "Repo desconocido: $($Item.repo)" }
 
+    $existing = Find-IssueByTitle -Repo $repoName -Title $Item.title
+    if ($existing) {
+        Write-Host "  (existe) #$($existing.number) $($Item.title)" -ForegroundColor DarkGray
+        $IssueIndex[$Item.title] = $existing
+        return $existing.url
+    }
+
     $labels = @($Item.labels)
     if ($Item.priority) { $labels += "priority:$($Item.priority)" }
     if ($Item.milestone) { $labels += "milestone:$($Item.milestone -replace '[^a-zA-Z0-9]+','-')" }
+    if ($Item.kind) { $labels += "type:$($Item.kind)" }
 
-  $body = @(
-        $Item.body,
+    $extra = @()
+    if ($Item.parent) { $extra += "**Parent:** $($Item.parent)" }
+    if ($Item.parentEpic) { $extra += "**Epic:** $($Item.parentEpic)" }
+    if ($Item.source) { $extra += "**Source:** $($Item.source)" }
+
+    $body = @(
+        $(if ($Item.body) { $Item.body } else { "" }),
         "",
+        ($extra -join "`n"),
         "---",
+        "**Kind:** $($Item.kind)",
         "**Area:** $($Item.area)",
         "**Repo:** $($Item.repo)",
         "**Milestone:** $($Item.milestone)",
         "**Priority:** $($Item.priority)",
         "**Status:** $($Item.status)",
         "",
-        '_Generado desde .github/project/tasks.json (skill MedEstética Obsidian)._'
+        "_Generado desde .github/project/tasks.json (skill MedEstetica Obsidian)._"
     ) -join "`n"
 
-    $issueArgs = @(
-        "issue", "create",
-        "--repo", "$Owner/$repoName",
-        "--title", $Item.title,
-        "--body", $body
-    )
+    $issueArgs = @("issue", "create", "--repo", "$Owner/$repoName", "--title", $Item.title, "--body", $body)
+    if ($Item.milestone) { $issueArgs += @("--milestone", $Item.milestone) }
     foreach ($label in ($labels | Select-Object -Unique)) {
         if ($label) { $issueArgs += @("--label", $label) }
     }
 
     $url = Invoke-Gh $issueArgs
-    if ($Item.status -eq "Done" -and $url) {
+    if ($url) {
         $number = ($url -split '/')[-1]
-        Invoke-Gh @("issue", "close", $number, "--repo", "$Owner/$repoName", "--reason", "completed") | Out-Null
+        $IssueIndex[$Item.title] = [pscustomobject]@{ url = $url; number = [int]$number }
+        if ($Item.status -eq "Done") {
+            Invoke-Gh @("issue", "close", "$number", "--repo", "$Owner/$repoName", "--reason", "completed") | Out-Null
+        }
     }
     return $url
 }
 
+function Add-ToProject {
+    param([int]$ProjectNumber, [string]$Url)
+    if ($DryRun -or -not $Url) { return }
+    try {
+        Invoke-Gh @("project", "item-add", "$ProjectNumber", "--owner", $Owner, "--url", $Url) | Out-Null
+    } catch {
+        Write-Warning "No se pudo agregar al project: $Url"
+    }
+}
+
 # --- Main ---
-Write-Host "MedEstetica SaaS - setup GitHub Project" -ForegroundColor Cyan
+Write-Host "MedEstetica SaaS - setup GitHub Project (completo)" -ForegroundColor Cyan
 if (-not $DryRun) { Ensure-GhAuth }
 
 $manifest = Get-Content "$Root\repos.manifest.json" -Raw | ConvertFrom-Json
@@ -126,103 +162,125 @@ $tasksDef = Get-Content "$Root\.github\project\tasks.json" -Raw | ConvertFrom-Js
 $repoMap = @{}
 foreach ($r in $manifest.repos) { $repoMap[$r.id] = $r.name }
 
-# 1) Crear repo meta platform si no existe
+$allLabels = @(
+    "epic", "checklist-obsidian", "backlog", "done", "performance", "testing", "integration",
+    "type:epic", "type:feature", "type:bugfix", "type:task", "type:subtask", "type:improvement",
+    "status:resolved", "status:pending", "status:optional",
+    "area:landing", "area:dashboard", "area:agenda", "area:inventario", "area:ordenes",
+    "area:tratamientos", "area:media", "area:infra", "area:qa", "area:whatsapp",
+    "priority:P0", "priority:P1", "priority:P2", "priority:P3"
+)
+
+# 1) Repo meta
 $platformRepo = $manifest.repos | Where-Object { $_.id -eq "platform" } | Select-Object -First 1
 if (-not $SkipRepoCreate) {
     $exists = $null
-    try {
-        $exists = Invoke-Gh @("repo", "view", "$Owner/$($platformRepo.name)", "--json", "name", "-q", ".name")
-    } catch {
-        $exists = $null
-    }
+    try { $exists = Invoke-Gh @("repo", "view", "$Owner/$($platformRepo.name)", "--json", "name", "-q", ".name") } catch { $exists = $null }
     if (-not $exists -and -not $DryRun) {
         Write-Host "Creando repositorio $($platformRepo.name)..." -ForegroundColor Yellow
         Invoke-Gh @(
             "repo", "create", "$Owner/$($platformRepo.name)",
-            "--public",
-            "--description", $manifest.description,
-            "--source", $Root,
-            "--remote", "origin",
-            "--push"
+            "--public", "--description", $manifest.description,
+            "--source", $Root, "--remote", "origin", "--push"
         ) | Out-Null
-    } elseif (-not $exists) {
-        Write-Host "[dry-run] Crearía repo $($platformRepo.name) y push inicial" -ForegroundColor DarkGray
-    } else {
+    } elseif ($exists) {
         Write-Host "Repo $($platformRepo.name) ya existe." -ForegroundColor Green
-        if (-not (Test-Path "$Root\.git")) {
-            git init | Out-Null
-            git branch -M dev
-            git remote add origin $platformRepo.url 2>$null
+        if (-not $DryRun) {
+            try { git push -u origin dev 2>&1 | Out-Null } catch { Write-Warning "Push pendiente: git push -u origin dev" }
         }
+    } else {
+        Write-Host "[dry-run] Crearia repo $($platformRepo.name)" -ForegroundColor DarkGray
     }
 }
 
-# 2) Labels en los 3 repos
-$allLabels = @("epic", "checklist-obsidian", "backlog", "done", "performance", "testing", "integration",
-    "area:landing", "area:dashboard", "area:agenda", "area:inventario", "area:tratamientos", "area:media", "area:infra", "area:qa", "area:whatsapp",
-    "priority:P0", "priority:P1", "priority:P2", "priority:P3")
+# 2) Labels y milestones
+$milestones = @($tasksDef.milestones)
 foreach ($repo in $manifest.repos) {
-    Write-Host "Labels en $($repo.name)..." -ForegroundColor DarkCyan
+    Write-Host "Labels + milestones en $($repo.name)..." -ForegroundColor DarkCyan
     Ensure-Labels -Repo $repo.name -Labels $allLabels
+    Ensure-Milestones -Repo $repo.name -Titles $milestones
 }
 
-# 3) Crear GitHub Project v2 y vincular repos core (backend, frontend, docs) + platform
-Write-Host "Creando GitHub Project..." -ForegroundColor Yellow
+# 3) GitHub Project
 $projectTitle = $tasksDef.projectTitle
 $projectUrl = $null
 $projectNumber = $null
 $coreRepoIds = @("platform", "backend", "frontend", "docs")
-if (-not $DryRun) {
-    $projectJson = Invoke-Gh @("project", "create", "--owner", $Owner, "--title", $projectTitle, "--format", "json")
-    $project = $projectJson | ConvertFrom-Json
-    $projectNumber = $project.number
-    $projectUrl = $project.url
-    Write-Host "Project #$projectNumber -> $projectUrl" -ForegroundColor Green
 
+if (-not $DryRun) {
+    $existingProjects = Invoke-Gh @("project", "list", "--owner", $Owner, "--format", "json")
+    $match = @($existingProjects | ConvertFrom-Json) | Where-Object { $_.title -eq $projectTitle } | Select-Object -First 1
+    if ($match) {
+        $projectNumber = $match.number
+        $projectUrl = $match.url
+        Write-Host "Project existente #$projectNumber -> $projectUrl" -ForegroundColor Yellow
+    } else {
+        $projectJson = Invoke-Gh @("project", "create", "--owner", $Owner, "--title", $projectTitle, "--format", "json")
+        $project = $projectJson | ConvertFrom-Json
+        $projectNumber = $project.number
+        $projectUrl = $project.url
+        Write-Host "Project creado #$projectNumber -> $projectUrl" -ForegroundColor Green
+    }
     foreach ($repo in ($manifest.repos | Where-Object { $coreRepoIds -contains $_.id })) {
-        Write-Host "Vinculando $($repo.name)..." -ForegroundColor DarkCyan
-        Invoke-Gh @("project", "link", "$projectNumber", "--owner", $Owner, "--repo", "$Owner/$($repo.name)") | Out-Null
+        try {
+            Invoke-Gh @("project", "link", "$projectNumber", "--owner", $Owner, "--repo", "$Owner/$($repo.name)") | Out-Null
+            Write-Host "  Vinculado: $($repo.name)" -ForegroundColor DarkCyan
+        } catch { Write-Warning "Link $($repo.name): $_" }
     }
 } else {
-    Write-Host "[dry-run] Crearía project '$projectTitle' y vincularía repos: $($coreRepoIds -join ', ')" -ForegroundColor DarkGray
+    Write-Host "[dry-run] Project '$projectTitle' + repos: $($coreRepoIds -join ', ')" -ForegroundColor DarkGray
 }
 
-# 4) Crear epics + tasks como issues y agregar al project
+# 4) Issues
 $created = @()
-foreach ($item in @($tasksDef.epics) + @($tasksDef.tasks)) {
-    Write-Host "Issue: $($item.title)" -ForegroundColor White
-    $url = New-ProjectIssue -Item $item -RepoMap $repoMap
-    if ($url) {
-        $created += $url
-        if (-not $DryRun -and $projectNumber) {
-            Invoke-Gh @("project", "item-add", "$projectNumber", "--owner", $Owner, "--url", $url) | Out-Null
+$issueIndex = @{}
+if (-not $SkipIssues) {
+    $allItems = @()
+    if ($tasksDef.epics) { $allItems += $tasksDef.epics }
+    if ($tasksDef.tasks) { $allItems += $tasksDef.tasks }
+    if ($tasksDef.subtasks) { $allItems += $tasksDef.subtasks }
+    if ($tasksDef.improvements) { $allItems += $tasksDef.improvements }
+
+    foreach ($item in $allItems) {
+        Write-Host "Issue: $($item.title)" -ForegroundColor White
+        $url = New-ProjectIssue -Item $item -RepoMap $repoMap -IssueIndex $issueIndex
+        if ($url) {
+            $created += $url
+            Add-ToProject -ProjectNumber $projectNumber -Url $url
         }
     }
 }
 
-# 5) Resumen local
-$summaryPath = Join-Path $Root ".github\project\last-run.md"
-$doneCount = @($tasksDef.tasks | Where-Object { $_.status -eq "Done" }).Count
-$todoCount = @($tasksDef.tasks | Where-Object { $_.status -eq "Todo" }).Count
-$inProgressCount = @($tasksDef.tasks | Where-Object { $_.status -eq "In Progress" }).Count
+# 5) Resumen
+$allTasks = @($tasksDef.tasks) + @($tasksDef.subtasks) + @($tasksDef.improvements)
+$doneCount = @($allTasks | Where-Object { $_.status -eq "Done" }).Count
+$todoCount = @($allTasks | Where-Object { $_.status -eq "Todo" }).Count
+$inProgressCount = @($allTasks | Where-Object { $_.status -eq "In Progress" }).Count
+$improvementCount = @($tasksDef.improvements).Count
 
-Write-Host ""
-Write-Host "=== Resumen ===" -ForegroundColor Cyan
-Write-Host "Issues creadas: $($created.Count)"
-Write-Host "Done: $doneCount | In Progress: $inProgressCount | Todo: $todoCount"
-if ($projectUrl) { Write-Host "Tablero: $projectUrl" -ForegroundColor Green }
-Write-Host "Documentacion: docs/GITHUB_PROJECT.md"
-
-if (-not $DryRun) {
-    @"
-
-## Última ejecución del script
+$summary = @"
+# Ultima ejecucion setup-github-project
 
 - Fecha: $(Get-Date -Format 'yyyy-MM-dd HH:mm')
 - Project: $projectUrl
-- Issues creadas: $($created.Count)
+- Issues procesadas: $($created.Count)
+- Resueltas (Done): $doneCount
+- En progreso: $inProgressCount
+- Pendientes (Todo): $todoCount
+- Mejoras opcionales: $improvementCount
 
-"@ | Add-Content -Path $summaryPath -Encoding UTF8
-}
+## Vistas recomendadas en GitHub
+1. Por estado (Status / labels status:*)
+2. Por modulo (labels area:*)
+3. Por tipo (labels type:feature, type:bugfix, type:improvement)
+4. Roadmap por milestone
+"@
 
+$summaryPath = Join-Path $Root ".github\project\last-run.md"
+if (-not $DryRun) { Set-Content -Path $summaryPath -Value $summary -Encoding UTF8 }
+
+Write-Host ""
+Write-Host "=== Resumen ===" -ForegroundColor Cyan
+Write-Host "Issues: $($created.Count) | Done: $doneCount | In Progress: $inProgressCount | Todo: $todoCount | Mejoras: $improvementCount"
+if ($projectUrl) { Write-Host "Tablero: $projectUrl" -ForegroundColor Green }
 Write-Host "Listo." -ForegroundColor Green
