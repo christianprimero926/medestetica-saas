@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: medestetica-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medestetica
+      POSTGRES_PASSWORD: medestetica_secret
+      POSTGRES_DB: medestetica
+    ports:
+      - "54333:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medestetica -d medestetica"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: medestetica-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://medestetica:medestetica_secret@postgres:5432/medestetica?schema=public
+      JWT_SECRET: change-me-in-production-use-long-random-string
+      JWT_EXPIRES_IN: 8h
+      PORT: 3001
+      CORS_ORIGIN: http://localhost:3000
+      SEED_ON_START: "true"
+    ports:
+      - "3001:3001"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: medestetica-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

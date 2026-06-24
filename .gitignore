@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.next/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+coverage/
+.prisma/
+uploads/
+
+# Repos hermanos clonados localmente (tienen su propio .git)
+backend/
+frontend/
+docs/
+
+# Artefactos temporales de desarrollo
+_inv_rebuilt.tsx

@@ -1,0 +1,327 @@
+{
+  "projectTitle": "MedEstética SaaS — Roadmap",
+  "projectDescription": "Tablero unificado de progreso del SaaS. Sincronizado con el checklist de Obsidian y el monorepo local.",
+  "views": [
+    {
+      "name": "Tablero por estado",
+      "layout": "board",
+      "groupBy": "Status"
+    },
+    {
+      "name": "Por módulo",
+      "layout": "board",
+      "groupBy": "Area"
+    },
+    {
+      "name": "Por repositorio",
+      "layout": "board",
+      "groupBy": "Repo"
+    },
+    {
+      "name": "Roadmap",
+      "layout": "roadmap",
+      "groupBy": "Milestone"
+    }
+  ],
+  "fields": [
+    { "name": "Status", "type": "single_select", "options": ["Todo", "In Progress", "Done"] },
+    { "name": "Area", "type": "single_select", "options": ["Platform", "Landing", "Dashboard", "Agenda", "Inventario", "Órdenes", "Tratamientos", "Media", "WhatsApp", "Infra", "QA"] },
+    { "name": "Repo", "type": "single_select", "options": ["platform", "backend", "frontend", "docs"] },
+    { "name": "Milestone", "type": "single_select", "options": ["M1 — MVP operativo", "M2 — Agenda avanzada", "M3 — Escala y despliegue", "M4 — Integraciones"] },
+    { "name": "Priority", "type": "single_select", "options": ["P0", "P1", "P2", "P3"] }
+  ],
+  "epics": [
+    {
+      "title": "[Epic] Landing y portal pacientes",
+      "repo": "frontend",
+      "area": "Landing",
+      "milestone": "M1 — MVP operativo",
+      "status": "Done",
+      "labels": ["epic", "area:landing"]
+    },
+    {
+      "title": "[Epic] Panel admin — UX base",
+      "repo": "frontend",
+      "area": "Dashboard",
+      "milestone": "M1 — MVP operativo",
+      "status": "Done",
+      "labels": ["epic", "area:dashboard"]
+    },
+    {
+      "title": "[Epic] Agenda y calendario",
+      "repo": "frontend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "status": "In Progress",
+      "labels": ["epic", "area:agenda"]
+    },
+    {
+      "title": "[Epic] Inventario y catálogo",
+      "repo": "backend",
+      "area": "Inventario",
+      "milestone": "M1 — MVP operativo",
+      "status": "Done",
+      "labels": ["epic", "area:inventario"]
+    },
+    {
+      "title": "[Epic] Despliegue e infraestructura",
+      "repo": "platform",
+      "area": "Infra",
+      "milestone": "M3 — Escala y despliegue",
+      "status": "Todo",
+      "labels": ["epic", "area:infra"]
+    }
+  ],
+  "tasks": [
+    {
+      "title": "Agenda: reprogramar citas existentes",
+      "body": "Checklist Obsidian — Modulo agenda.\n\nPermitir cambiar fecha/hora de una cita ya agendada con validación de capacidad y política de solapes.\n\n**Repos:** frontend (UI modal/flujo) + backend (PATCH + `validateStaffCapacity`).",
+      "repo": "frontend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P0",
+      "status": "Todo",
+      "labels": ["checklist-obsidian", "area:agenda"]
+    },
+    {
+      "title": "Agenda: definir y documentar validación de estado «en curso»",
+      "body": "Checklist Obsidian — Modulo agenda.\n\nDefinir reglas de negocio: ¿hora actual dentro del slot?, ¿check-in manual?, ¿solo profesional asignado?\nImplementar en backend y reflejar en UI del calendario.",
+      "repo": "backend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Todo",
+      "labels": ["checklist-obsidian", "area:agenda"]
+    },
+    {
+      "title": "Dashboard: gráfico de citas por rango de fechas",
+      "body": "Backlog Mejoras detectadas #1.\n\nEndpoint `GET /dashboard/appointments-chart` con mismos presets que ingresos (7d, 15d, 30d, año, rango custom).",
+      "repo": "backend",
+      "area": "Dashboard",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Todo",
+      "labels": ["backlog", "area:dashboard"]
+    },
+    {
+      "title": "Agenda: paginación server-side en GET /appointments",
+      "body": "Backlog Mejoras detectadas #2.\n\nHoy el calendario trae todos los registros; agregar paginación/filtros por rango para tenants con alto volumen.",
+      "repo": "backend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Todo",
+      "labels": ["backlog", "area:agenda", "performance"]
+    },
+    {
+      "title": "Onboarding post-login (WhatsApp, logos, horarios)",
+      "body": "Backlog Mejoras detectadas #3.\n\nWizard único para nuevos tenants tras primer login admin.",
+      "repo": "frontend",
+      "area": "Dashboard",
+      "milestone": "M3 — Escala y despliegue",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["backlog", "area:dashboard"]
+    },
+    {
+      "title": "Tests e2e smoke: login demo → dashboard → inventario",
+      "body": "Backlog Mejoras detectadas #4.\n\nFlujo mínimo automatizado con filtro 7d en stats de inventario.",
+      "repo": "platform",
+      "area": "QA",
+      "milestone": "M3 — Escala y despliegue",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["backlog", "area:qa", "testing"]
+    },
+    {
+      "title": "Recurrencia RRULE vinculada a treatment_plans.sessionsRemaining",
+      "body": "Backlog Mejoras detectadas #5.\n\nSeries de citas alineadas con sesiones restantes del plan de tratamiento.",
+      "repo": "backend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["backlog", "area:agenda"]
+    },
+    {
+      "title": "Picker de slots en TreatmentPlansPanel (ONCE/EVALUATION)",
+      "body": "Backlog Mejoras detectadas #6.\n\nReutilizar `AdminScheduleSlotPicker` al agendar desde planes.",
+      "repo": "frontend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["backlog", "area:agenda"]
+    },
+    {
+      "title": "Media: migración almacenamiento a S3/CDN",
+      "body": "Mejoras detectadas — biblioteca usa proxy local; documentar e implementar storage cloud parametrizable.",
+      "repo": "backend",
+      "area": "Media",
+      "milestone": "M3 — Escala y despliegue",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["backlog", "area:media", "infra"]
+    },
+    {
+      "title": "KPIs leads convertidos en dashboard",
+      "body": "Mejoras detectadas — filtros globales pendientes para leads convertidos.",
+      "repo": "frontend",
+      "area": "Dashboard",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["backlog", "area:dashboard"]
+    },
+    {
+      "title": "Landing: botón WhatsApp parametrizado",
+      "body": "Checklist Obsidian — completado.",
+      "repo": "frontend",
+      "area": "Landing",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:landing", "done"]
+    },
+    {
+      "title": "Admin: notificaciones persistentes hasta atender recordatorios",
+      "body": "Checklist Obsidian — completado.",
+      "repo": "frontend",
+      "area": "Dashboard",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:dashboard", "done"]
+    },
+    {
+      "title": "Admin: cerrar sesión y sidebar colapsable",
+      "body": "Checklist Obsidian — completado.",
+      "repo": "frontend",
+      "area": "Dashboard",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:dashboard", "done"]
+    },
+    {
+      "title": "Filtros globales de fechas en gráficos y reportes",
+      "body": "Checklist Obsidian — completado (7d, 15d, 30d, año, rango custom).",
+      "repo": "backend",
+      "area": "Dashboard",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:dashboard", "done"]
+    },
+    {
+      "title": "Performance: SWR / carga reactiva en páginas lentas",
+      "body": "Checklist Obsidian — completado en agenda, catálogo, inventario.",
+      "repo": "frontend",
+      "area": "Dashboard",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "performance", "done"]
+    },
+    {
+      "title": "Agenda: calendario estilo Google + filtros de visualización",
+      "body": "Sesión reciente — FullCalendar con vistas día/semana/mes/año/agenda/4d y filtros canceladas/completadas/pausa.",
+      "repo": "frontend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["area:agenda", "done"]
+    },
+    {
+      "title": "Agenda: validación capacidad N citas simultáneas",
+      "body": "Sesión reciente — `checkAppointmentCapacity`, bloqueo con maxConcurrent=1 y límite N+1.",
+      "repo": "backend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P0",
+      "status": "Done",
+      "labels": ["area:agenda", "done"]
+    },
+    {
+      "title": "Agenda: picker unificado de fecha/hora y citas manuales",
+      "body": "Checklist Obsidian — completado (`AdminScheduleSlotPicker`).",
+      "repo": "frontend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:agenda", "done"]
+    },
+    {
+      "title": "Agenda: recurrencia semanal/quincenal/mensual",
+      "body": "Checklist Obsidian — completado (presets parametrizados + planes periódicos).",
+      "repo": "backend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:agenda", "done"]
+    },
+    {
+      "title": "Agenda: submódulo leads como tabla con acciones",
+      "body": "Checklist Obsidian — completado.",
+      "repo": "frontend",
+      "area": "Agenda",
+      "milestone": "M2 — Agenda avanzada",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:agenda", "done"]
+    },
+    {
+      "title": "Inventario: gráficos, top 5 y limpieza de secciones",
+      "body": "Checklist Obsidian — completado.",
+      "repo": "frontend",
+      "area": "Inventario",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:inventario", "done"]
+    },
+    {
+      "title": "Tratamientos: CRUD + parametrización de duración",
+      "body": "Checklist Obsidian — completado.",
+      "repo": "backend",
+      "area": "Tratamientos",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:tratamientos", "done"]
+    },
+    {
+      "title": "Biblioteca de imágenes: preview y almacenamiento",
+      "body": "Checklist Obsidian — completado (proxy /api/media/).",
+      "repo": "frontend",
+      "area": "Media",
+      "milestone": "M1 — MVP operativo",
+      "priority": "P1",
+      "status": "Done",
+      "labels": ["checklist-obsidian", "area:media", "done"]
+    },
+    {
+      "title": "Infra: documentar despliegue VPS y migración AWS",
+      "body": "Docs en `docs/DEPLOYMENT.md` y `docs/AWS_MIGRATION.md` — revisar y cerrar gaps.",
+      "repo": "platform",
+      "area": "Infra",
+      "milestone": "M3 — Escala y despliegue",
+      "priority": "P2",
+      "status": "In Progress",
+      "labels": ["area:infra"]
+    },
+    {
+      "title": "WhatsApp: integración bot Cloud API con adapter medestetica",
+      "body": "Repo hermano `whatsapp-cloud-bot`. Citas guest, leads y perfil público.",
+      "repo": "platform",
+      "area": "WhatsApp",
+      "milestone": "M4 — Integraciones",
+      "priority": "P2",
+      "status": "Todo",
+      "labels": ["area:whatsapp", "integration"]
+    }
+  ]
+}

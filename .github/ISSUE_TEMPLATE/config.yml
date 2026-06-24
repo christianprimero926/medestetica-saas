@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Checklist Obsidian
+    url: https://github.com/christianprimero926/medestetica-saas/blob/dev/docs/GITHUB_PROJECT.md
+    about: Seguimiento de tareas y tablero del SaaS
+  - name: Documentación arquitectura
+    url: https://github.com/christianprimero926/medestetica-saas/blob/dev/docs/ARCHITECTURE.md
+    about: Arquitectura general del producto

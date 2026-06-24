@@ -1,0 +1,57 @@
+{
+  "name": "MedEstética SaaS",
+  "owner": "christianprimero926",
+  "description": "Plataforma SaaS multi-tenant para clínicas de medicina estética.",
+  "obsidianChecklist": "C:\\Users\\chris\\OneDrive\\Documentos\\Obsidian Vault\\MedEstética SaaS\\Cosas por hacer.md",
+  "obsidianMejoras": "C:\\Users\\chris\\OneDrive\\Documentos\\Obsidian Vault\\MedEstética SaaS\\Mejoras detectadas.md",
+  "localRoot": "d:\\Proyectos\\medestetica-saas",
+  "repos": [
+    {
+      "id": "platform",
+      "name": "medestetica-saas",
+      "role": "Orquestación (Docker, scripts, tablero GitHub Project)",
+      "url": "https://github.com/christianprimero926/medestetica-saas",
+      "localPath": ".",
+      "defaultBranch": "dev",
+      "ports": []
+    },
+    {
+      "id": "backend",
+      "name": "medestetica-saas-backend",
+      "role": "API REST NestJS + Prisma + PostgreSQL",
+      "url": "https://github.com/christianprimero926/medestetica-saas-backend",
+      "localPath": "backend",
+      "defaultBranch": "dev",
+      "ports": [3001, 54333]
+    },
+    {
+      "id": "frontend",
+      "name": "medestetica-saas-frontend",
+      "role": "Panel web Next.js 14 + portal pacientes",
+      "url": "https://github.com/christianprimero926/medestetica-saas-frontend",
+      "localPath": "frontend",
+      "defaultBranch": "dev",
+      "ports": [3000]
+    },
+    {
+      "id": "docs",
+      "name": "medestetica-saas-docs",
+      "role": "Documentación de arquitectura, despliegue y módulos",
+      "url": "https://github.com/christianprimero926/medestetica-saas-docs",
+      "localPath": "docs",
+      "defaultBranch": "dev",
+      "ports": []
+    }
+  ],
+  "relatedRepos": [
+    {
+      "id": "whatsapp",
+      "name": "whatsapp-cloud-bot",
+      "role": "Bot WhatsApp Cloud API (adapter medestetica)",
+      "url": "https://github.com/christianprimero926/whatsapp-cloud-bot",
+      "localPath": "../whatsapp-cloud-bot",
+      "defaultBranch": "main",
+      "ports": [3002]
+    }
+  ]
+}

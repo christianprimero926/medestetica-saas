@@ -1,0 +1,60 @@
+---
+name: Tarea de producto
+about: Nueva tarea alineada al checklist Obsidian / tablero MedEstética
+title: "[AREA] "
+labels: ["backlog"]
+assignees: []
+body:
+  - type: dropdown
+    id: repo
+    attributes:
+      label: Repositorio
+      options:
+        - platform (medestetica-saas)
+        - backend
+        - frontend
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Módulo / área
+      options:
+        - Landing
+        - Dashboard
+        - Agenda
+        - Inventario
+        - Órdenes
+        - Tratamientos
+        - Media
+        - WhatsApp
+        - Infra
+        - QA
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción
+      description: Qué hay que hacer y criterio de aceptación
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Verificación
+      options:
+        - label: Build/lint del área afectada
+        - label: Smoke test local (puertos 3000/3001)
+        - label: Actualizar Obsidian si aplica
