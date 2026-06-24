@@ -10,6 +10,8 @@ param(
     [string]$Owner = "christianprimero926"
 )
 
+$ProjectOwner = $Owner
+
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
@@ -31,9 +33,18 @@ function Invoke-Gh {
         return $null
     }
     $gh = Get-GhExe
-    $output = & $gh @GhArgs 2>&1
-    if ($LASTEXITCODE -ne 0) { throw "gh $($GhArgs -join ' ') failed: $output" }
-    return ($output | Out-String).Trim()
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            $output = & $gh @GhArgs 2>&1 | ForEach-Object { "$_" }
+            if ($LASTEXITCODE -eq 0) { return ($output -join "`n").Trim() }
+            if ($attempt -lt 3) { Start-Sleep -Seconds (2 * $attempt) }
+        }
+        throw "gh $($GhArgs -join ' ') failed: $($output -join ' ')"
+    } finally {
+        $ErrorActionPreference = $prev
+    }
 }
 
 function Ensure-GhAuth {
@@ -67,22 +78,29 @@ function Ensure-Labels {
 
 function Ensure-Milestones {
     param([string]$Repo, [string[]]$Titles)
+    if ($DryRun) { return }
+    $gh = Get-GhExe
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
     foreach ($title in $Titles) {
-        try {
-            Invoke-Gh @("api", "repos/$Owner/$Repo/milestones", "-f", "title=$title", "-f", "state=open") | Out-Null
-        } catch {
-            Write-Warning "Milestone $title en ${Repo}: $_"
-        }
+        & $gh api "repos/$Owner/$Repo/milestones" -f "title=$title" -f "state=open" 2>$null | Out-Null
     }
+    $ErrorActionPreference = $prev
 }
 
 function Find-IssueByTitle {
     param([string]$Repo, [string]$Title)
     if ($DryRun) { return $null }
-    $q = [uri]::EscapeDataString("repo:$Owner/$Repo is:issue `"$Title`"")
-    $json = Invoke-Gh @("search", "issues", $q, "--json", "url,number,title", "--jq", ".items[0]")
-    if ($json -and $json -ne "null") { return ($json | ConvertFrom-Json) }
-    return $null
+    try {
+        $json = Invoke-Gh @("issue", "list", "--repo", "$Owner/$Repo", "--state", "all", "--limit", "200", "--json", "title,url,number")
+        if (-not $json) { return $null }
+        $all = @($json | ConvertFrom-Json)
+        $hit = @($all | Where-Object { $_.title -eq $Title } | Select-Object -First 1)
+        if ($hit.Count -eq 0) { return $null }
+        return $hit[0]
+    } catch {
+        return $null
+    }
 }
 
 function New-ProjectIssue {
@@ -103,8 +121,7 @@ function New-ProjectIssue {
 
     $labels = @($Item.labels)
     if ($Item.priority) { $labels += "priority:$($Item.priority)" }
-    if ($Item.milestone) { $labels += "milestone:$($Item.milestone -replace '[^a-zA-Z0-9]+','-')" }
-    if ($Item.kind) { $labels += "type:$($Item.kind)" }
+    if ($Item.kind -and ($labels -notcontains "type:$($Item.kind)")) { $labels += "type:$($Item.kind)" }
 
     $extra = @()
     if ($Item.parent) { $extra += "**Parent:** $($Item.parent)" }
@@ -127,7 +144,11 @@ function New-ProjectIssue {
     ) -join "`n"
 
     $issueArgs = @("issue", "create", "--repo", "$Owner/$repoName", "--title", $Item.title, "--body", $body)
-    if ($Item.milestone) { $issueArgs += @("--milestone", $Item.milestone) }
+    # Milestone via label (milestone:M1) para evitar 422 en repos sin milestone creado
+    if ($Item.milestone) {
+        $mLabel = "milestone:" + ($Item.milestone -replace '[^a-zA-Z0-9]+','-')
+        $labels += $mLabel
+    }
     foreach ($label in ($labels | Select-Object -Unique)) {
         if ($label) { $issueArgs += @("--label", $label) }
     }
@@ -147,7 +168,7 @@ function Add-ToProject {
     param([int]$ProjectNumber, [string]$Url)
     if ($DryRun -or -not $Url) { return }
     try {
-        Invoke-Gh @("project", "item-add", "$ProjectNumber", "--owner", $Owner, "--url", $Url) | Out-Null
+        Invoke-Gh @("project", "item-add", "$ProjectNumber", "--owner", "@me", "--url", $Url) | Out-Null
     } catch {
         Write-Warning "No se pudo agregar al project: $Url"
     }
@@ -167,8 +188,9 @@ $allLabels = @(
     "type:epic", "type:feature", "type:bugfix", "type:task", "type:subtask", "type:improvement",
     "status:resolved", "status:pending", "status:optional",
     "area:landing", "area:dashboard", "area:agenda", "area:inventario", "area:ordenes",
-    "area:tratamientos", "area:media", "area:infra", "area:qa", "area:whatsapp",
-    "priority:P0", "priority:P1", "priority:P2", "priority:P3"
+    "area:tratamientos", "area:media", "area:infra", "area:qa", "area:whatsapp", "infra",
+    "priority:P0", "priority:P1", "priority:P2", "priority:P3",
+    "milestone:M1-MVP-operativo", "milestone:M2-Agenda-avanzada", "milestone:M3-Escala-y-despliegue", "milestone:M4-Integraciones"
 )
 
 # 1) Repo meta
@@ -208,14 +230,19 @@ $projectNumber = $null
 $coreRepoIds = @("platform", "backend", "frontend", "docs")
 
 if (-not $DryRun) {
-    $existingProjects = Invoke-Gh @("project", "list", "--owner", $Owner, "--format", "json")
-    $match = @($existingProjects | ConvertFrom-Json) | Where-Object { $_.title -eq $projectTitle } | Select-Object -First 1
+    $existingRaw = Invoke-Gh @("project", "list", "--owner", "@me", "--format", "json")
+    $parsed = $existingRaw | ConvertFrom-Json
+    $projectList = @()
+    if ($parsed.projects) { $projectList = @($parsed.projects) }
+    elseif ($parsed -is [array]) { $projectList = $parsed }
+    else { $projectList = @($parsed) }
+    $match = $projectList | Where-Object { $_.title -match 'MedEstetica' } | Select-Object -First 1
     if ($match) {
         $projectNumber = $match.number
         $projectUrl = $match.url
         Write-Host "Project existente #$projectNumber -> $projectUrl" -ForegroundColor Yellow
     } else {
-        $projectJson = Invoke-Gh @("project", "create", "--owner", $Owner, "--title", $projectTitle, "--format", "json")
+        $projectJson = Invoke-Gh @("project", "create", "--owner", "@me", "--title", $projectTitle, "--format", "json")
         $project = $projectJson | ConvertFrom-Json
         $projectNumber = $project.number
         $projectUrl = $project.url
@@ -223,7 +250,7 @@ if (-not $DryRun) {
     }
     foreach ($repo in ($manifest.repos | Where-Object { $coreRepoIds -contains $_.id })) {
         try {
-            Invoke-Gh @("project", "link", "$projectNumber", "--owner", $Owner, "--repo", "$Owner/$($repo.name)") | Out-Null
+            Invoke-Gh @("project", "link", "$projectNumber", "--owner", $Owner, "--repo", $repo.name) | Out-Null
             Write-Host "  Vinculado: $($repo.name)" -ForegroundColor DarkCyan
         } catch { Write-Warning "Link $($repo.name): $_" }
     }
@@ -247,6 +274,7 @@ if (-not $SkipIssues) {
         if ($url) {
             $created += $url
             Add-ToProject -ProjectNumber $projectNumber -Url $url
+            Start-Sleep -Milliseconds 300
         }
     }
 }
