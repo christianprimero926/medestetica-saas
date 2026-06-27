@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: medestetica
-      POSTGRES_PASSWORD: medestetica_secret
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-medestetica_secret}
       POSTGRES_DB: medestetica
     ports:
       - "54333:5432"
@@ -27,12 +27,15 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://medestetica:medestetica_secret@postgres:5432/medestetica?schema=public
-      JWT_SECRET: change-me-in-production-use-long-random-string
+      DATABASE_URL: postgresql://medestetica:${POSTGRES_PASSWORD:-medestetica_secret}@postgres:5432/medestetica?schema=public
+      # Define estos secretos en un .env junto al compose para producción.
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-long-random-string}
+      TENANT_SECRETS_KEY: ${TENANT_SECRETS_KEY:-dev-tenant-secrets-change-in-production-min-32-chars}
       JWT_EXPIRES_IN: 8h
       PORT: 3001
-      CORS_ORIGIN: http://localhost:3000
-      SEED_ON_START: "true"
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # Carga datos demo en cada arranque. Poner "false" en producción.
+      SEED_ON_START: ${SEED_ON_START:-true}
     ports:
       - "3001:3001"
 
@@ -46,6 +49,7 @@ services:
       - backend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
+      API_URL_INTERNAL: http://backend:3001
     ports:
       - "3000:3000"
 

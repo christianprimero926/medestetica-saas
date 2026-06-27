@@ -83,6 +83,7 @@ Tablero de progreso (GitHub Project + issues): [docs/GITHUB_PROJECT.md](docs/GIT
 ## Documentación
 
 - [Arquitectura general](docs/ARCHITECTURE.md)
+- [Seguridad y estado técnico](docs/SEGURIDAD.md)
 - [GitHub Project / roadmap](docs/GITHUB_PROJECT.md)
 - [Credenciales demo](docs/CREDENCIALES_DEMO.md)
 - [Vistas por tenant (admin vs pacientes)](docs/VISTAS_TENANT.md)
