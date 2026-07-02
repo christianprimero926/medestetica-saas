@@ -17,3 +17,6 @@ docs/
 
 # Artefactos temporales de desarrollo
 _inv_rebuilt.tsx
+
+# Logs capturados durante ventanas de prueba (scripts/capture-logs.ps1)
+logs/
