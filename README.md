@@ -86,6 +86,7 @@ Tablero de progreso (GitHub Project + issues): [docs/GITHUB_PROJECT.md](docs/GIT
 - [Seguridad y estado técnico](docs/SEGURIDAD.md)
 - [Plan MVP — prueba con el cliente](docs/PLAN_MVP_TEST.md)
 - [Guión de prueba con el cliente](docs/GUION_PRUEBA_CLIENTE.md)
+- [Instructivo: despliegue local para prueba del cliente](docs/INSTRUCTIVO_PRUEBA_LOCAL.md)
 - [GitHub Project / roadmap](docs/GITHUB_PROJECT.md)
 - [Credenciales demo](docs/CREDENCIALES_DEMO.md)
 - [Vistas por tenant (admin vs pacientes)](docs/VISTAS_TENANT.md)
