@@ -1,0 +1,78 @@
+# Despliegue de PRODUCCIÓN con imágenes precompiladas desde GitHub Container Registry
+# (no compila en el servidor). Uso en el VPS:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production pull
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# Variables requeridas en .env.production (ver .env.example):
+#   IMAGE_TAG, POSTGRES_PASSWORD, JWT_SECRET, TENANT_SECRETS_KEY,
+#   APP_DOMAIN, ACME_EMAIL, CORS_ORIGIN
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: medestetica-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medestetica
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      POSTGRES_DB: medestetica
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medestetica -d medestetica"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Sin 'ports': la BD no se expone al host en producción.
+
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-christianprimero926}/medestetica-saas-backend:${IMAGE_TAG:-latest}
+    container_name: medestetica-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://medestetica:${POSTGRES_PASSWORD}@postgres:5432/medestetica?schema=public
+      JWT_SECRET: ${JWT_SECRET:?falta JWT_SECRET}
+      TENANT_SECRETS_KEY: ${TENANT_SECRETS_KEY:?falta TENANT_SECRETS_KEY}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      PORT: 3001
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      SEED_ON_START: ${SEED_ON_START:-false}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
+    # Sin 'ports': el backend solo es accesible dentro de la red de Docker.
+
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-christianprimero926}/medestetica-saas-frontend:${IMAGE_TAG:-latest}
+    container_name: medestetica-web
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_URL_INTERNAL: http://backend:3001
+      # NEXT_PUBLIC_API_URL se hornea en build; el navegador usa /api same-origin.
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: medestetica-caddy
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?falta APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?falta ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  uploads_data:
+  caddy_data:
+  caddy_config:

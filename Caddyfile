@@ -1,0 +1,23 @@
+# Caddy: HTTPS automático (Let's Encrypt) + reverse proxy al frontend.
+# Todo el tráfico (incluido /api, proxeado por Next al backend) entra por el frontend.
+# {$APP_DOMAIN} y {$ACME_EMAIL} vienen de .env.production.
+
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode gzip zstd
+	reverse_proxy medestetica-web:3000
+}
+
+# --- Multi-dominio (una clínica = un dominio) ---
+# Como el sistema es multi-tenant y el navegador usa /api same-origin, puedes
+# apuntar VARIOS dominios al mismo frontend. El tenant se resuelve por la ruta
+# /c/<slug> o por el subdominio si más adelante se implementa esa resolución.
+# Ejemplo para un cliente con su propio dominio:
+#
+# www.clinicaejemplo.com, clinicaejemplo.com {
+# 	encode gzip zstd
+# 	reverse_proxy medestetica-web:3000
+# }
