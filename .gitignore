@@ -20,3 +20,7 @@ _inv_rebuilt.tsx
 
 # Logs capturados durante ventanas de prueba (scripts/capture-logs.ps1)
 logs/
+
+# Export de referencia del prototipo Replit (no es código del proyecto)
+Clinic-Canvas/
+Clinic-Canvas.zip

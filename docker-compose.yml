@@ -38,6 +38,10 @@ services:
       SEED_ON_START: ${SEED_ON_START:-true}
     ports:
       - "3001:3001"
+    # La multimedia por tenant vive fuera del contenedor: sin este volumen,
+    # cada rebuild borra todas las imágenes subidas.
+    volumes:
+      - backend_uploads:/app/uploads
 
   frontend:
     build:
@@ -55,3 +59,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:
