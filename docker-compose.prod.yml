@@ -40,6 +40,17 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       SEED_ON_START: ${SEED_ON_START:-false}
       UPLOAD_DIR: /app/uploads
+      # Hora local del negocio: slots y horario de atención se interpretan en Bogotá.
+      TZ: ${TZ:-America/Bogota}
+      # Correo (copias de consentimiento). Sin configurar => MAIL_OFF (no rompe nada).
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      # Agente IA de agendamiento (CRM WhatsApp). Sin key => toggle deshabilitado.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
     volumes:
       - uploads_data:/app/uploads
     # Sin 'ports': el backend solo es accesible dentro de la red de Docker.

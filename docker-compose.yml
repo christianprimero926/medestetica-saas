@@ -33,7 +33,19 @@ services:
       TENANT_SECRETS_KEY: ${TENANT_SECRETS_KEY:-dev-tenant-secrets-change-in-production-min-32-chars}
       JWT_EXPIRES_IN: 8h
       PORT: 3001
+      # Hora local del consultorio: el horario de atención (weeklyHours) y los
+      # slots de agendamiento se interpretan en esta zona.
+      TZ: ${TZ:-America/Bogota}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # Correo saliente (copias de consentimientos, etc.). Vacío = deshabilitado.
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      # Agente IA del CRM WhatsApp (Claude). Vacío = agente deshabilitado.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-opus-4-8}
       # Carga datos demo en cada arranque. Poner "false" en producción.
       SEED_ON_START: ${SEED_ON_START:-true}
     ports:
