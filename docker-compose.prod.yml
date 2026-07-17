@@ -38,6 +38,8 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       PORT: 3001
       CORS_ORIGIN: ${CORS_ORIGIN}
+      # URL pública del sitio: arma el QR de verificación de firmas.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://${APP_DOMAIN}}
       SEED_ON_START: ${SEED_ON_START:-false}
       UPLOAD_DIR: /app/uploads
       # Hora local del negocio: slots y horario de atención se interpretan en Bogotá.

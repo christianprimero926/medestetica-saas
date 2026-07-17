@@ -37,6 +37,8 @@ services:
       # slots de agendamiento se interpretan en esta zona.
       TZ: ${TZ:-America/Bogota}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # URL pública del sitio: arma el QR de verificación de firmas.
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:3000}
       # Correo saliente (copias de consentimientos, etc.). Vacío = deshabilitado.
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
